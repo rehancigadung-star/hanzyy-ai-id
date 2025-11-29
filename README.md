@@ -1,2 +1,289 @@
-# hanzyy-ai-id
-website ai Gemini
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HANZ-AI Chatbot</title>
+    <style>
+        /* --- Bagian CSS (Gaya Modern) --- */
+        :root {
+            --primary-color: #2E86C1;
+            --secondary-color: #F4F6F7;
+            --background-color: #FFFFFF;
+            --input-bg: #EAECEE;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: var(--secondary-color);
+            padding: 20px 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 700px;
+            background: var(--background-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        #chat-output {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: var(--background-color);
+            border-bottom: 1px solid #eee;
+        }
+
+        .message-container {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-message-box {
+            align-self: flex-end;
+            max-width: 85%;
+            background-color: #D6EAF8;
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 18px 18px 0 18px;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 0.95em;
+        }
+
+        .ai-response-box {
+            align-self: flex-start;
+            max-width: 85%;
+            background-color: var(--input-bg);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 18px 18px 18px 0;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 0.95em;
+        }
+        
+        .input-area {
+            padding: 15px 20px;
+            display: flex;
+            background-color: var(--background-color);
+            border-top: 1px solid #ccc;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 25px;
+            background-color: var(--input-bg);
+            font-size: 1em;
+            margin-right: 10px;
+            outline: none;
+            transition: box-shadow 0.2s;
+        }
+        
+        #user-input:focus {
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
+        #send-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        #send-button:hover:not(:disabled) {
+            background-color: #2173A9;
+        }
+
+        #send-button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            HANZ-AI (CHAT BOT)
+        </header>
+        <div id="chat-output">
+            <div class="message-container">
+                <div class="ai-response-box">Halo! Saya **HANZ-AI**. Tanyakan apapun yang Anda mau!</div>
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="Tanyakan sesuatu...">
+            <button id="send-button">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Bagian JavaScript ---
+        // Kunci API Anda dimasukkan di sini.
+        const API_KEY = "AIzaSyArFjQJcmT257YzcwWLkUM2k3Dt2dZrI4E"; 
+        
+        // Model yang cepat dan efisien (Gemini 2.5 Flash)
+        const MODEL_NAME = "gemini-2.5-flash"; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+        const inputField = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const chatOutput = document.getElementById('chat-output');
+        
+        // Simpan riwayat chat untuk percakapan berlanjut
+        const history = [];
+        
+        // Jawaban kustom untuk pertanyaan nama
+        const CUSTOM_NAME_RESPONSE = "Nama saya **Hanzy**, saya adalah model bahasa besar yang dibuat oleh **HANZ AI** dan dilatih oleh Google. Ada lagi yang bisa saya bantu?";
+
+        sendButton.addEventListener('click', sendMessage);
+        inputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Fungsi untuk menampilkan pesan
+        function displayMessage(content, type) {
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'message-container';
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'user' ? 'user-message-box' : 'ai-response-box';
+            
+            // Format sederhana: bold dan baris baru
+            let htmlContent = content.replace(/\n/g, '<br>');
+            htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            messageDiv.innerHTML = htmlContent; 
+            containerDiv.appendChild(messageDiv);
+            chatOutput.appendChild(containerDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+            return messageDiv;
+        }
+        
+        // Fungsi utama untuk mengirim pesan ke API
+        async function sendMessage() {
+            const userText = inputField.value.trim();
+            if (userText === "") return;
+
+            // 1. Tampilkan pesan pengguna
+            displayMessage(userText, 'user');
+            
+            // 2. Cek Jawaban Kustom (Logic tambahan untuk nama)
+            const lowerCaseText = userText.toLowerCase();
+            const nameKeywords = ["siapa nama anda", "namamu siapa", "kamu siapa", "siapa kamu", "nama lu siapa"];
+            
+            let customResponse = null;
+            for (const keyword of nameKeywords) {
+                if (lowerCaseText.includes(keyword)) {
+                    customResponse = CUSTOM_NAME_RESPONSE;
+                    break;
+                }
+            }
+
+            if (customResponse) {
+                // 3. Tampilkan jawaban kustom tanpa memanggil API
+                inputField.value = '';
+                displayMessage(customResponse, 'ai');
+                history.push({ role: "user", parts: [{ text: userText }] }); // Tetap simpan user request
+                history.push({ role: "model", parts: [{ text: customResponse }] }); // Simpan custom response
+                inputField.focus();
+                chatOutput.scrollTop = chatOutput.scrollHeight;
+                return; 
+            }
+
+            // 4. Lanjutkan ke pemanggilan API jika tidak ada jawaban kustom
+            history.push({ role: "user", parts: [{ text: userText }] });
+
+            // 5. Persiapan UI dan Loading
+            inputField.value = '';
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<div class="loading"></div>';
+            
+            const loadingMessageDiv = displayMessage('...', 'ai');
+            
+            try {
+                // 6. Kirim permintaan ke Gemini API
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: history, 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Kesalahan Jaringan/API: ${response.status}.`);
+                }
+
+                const data = await response.json();
+                
+                // 7. Ekstrak teks balasan
+                const aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, tidak dapat memproses permintaan ini.";
+
+                // 8. Perbarui UI dan Riwayat
+                loadingMessageDiv.innerHTML = aiResponseText.replace(/\n/g, '<br>');
+                history.push({ role: "model", parts: [{ text: aiResponseText }] });
+
+            } catch (error) {
+                console.error('Error saat mengambil data:', error);
+                loadingMessageDiv.innerHTML = `⚠️ Error: ${error.message}. Mohon cek Kunci API Anda.`;
+            } finally {
+                // 9. Bersihkan UI
+                sendButton.disabled = false;
+                sendButton.innerHTML = '➤';
+                inputField.focus();
+                chatOutput.scrollTop = chatOutput.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
